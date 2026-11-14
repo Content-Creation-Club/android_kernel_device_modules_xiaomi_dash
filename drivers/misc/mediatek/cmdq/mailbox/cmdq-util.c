@@ -8,6 +8,7 @@
 #include <linux/io.h>
 #include <linux/debugfs.h>
 #include <linux/proc_fs.h>
+#include <linux/mutex.h>
 #include <linux/dma-mapping.h>
 #include <linux/sched/clock.h>
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
@@ -1354,13 +1355,23 @@ EXPORT_SYMBOL(cmdq_util_get_first_err_mod);
 
 int cmdq_proc_create(void)
 {
+	static DEFINE_MUTEX(proc_lock);
+	static struct proc_dir_entry *debug_dir;
 	struct proc_dir_entry *debugDirEntry = NULL;
 	struct proc_dir_entry *entry = NULL;
+	int ret = -ENOMEM;
+
+	/* Both GCE controllers expose the same global diagnostic state. */
+	mutex_lock(&proc_lock);
+	if (debug_dir) {
+		ret = 0;
+		goto out;
+	}
 
 	debugDirEntry = proc_mkdir("mtk_cmdq_debug", NULL);
 	if (!debugDirEntry) {
 		cmdq_err("debugfs_create_dir cmdq failed");
-		return -EINVAL;
+		goto out;
 	}
 
 	if (!cmdq_proc_debug_off) {
@@ -1368,14 +1379,14 @@ int cmdq_proc_create(void)
 			&cmdq_util_status_fops);
 		if (!entry) {
 			cmdq_err("proc_create_file cmdq-status failed");
-			return -ENOMEM;
+			goto remove_dir;
 		}
 
 		entry = proc_create("cmdq-record", 0440, debugDirEntry,
 			&cmdq_util_record_fops);
 		if (!entry) {
 			cmdq_err("proc_create_file cmdq-record failed");
-			return -ENOMEM;
+			goto remove_dir;
 		}
 	}
 
@@ -1384,10 +1395,18 @@ int cmdq_proc_create(void)
 			&cmdq_proc_util_buf_record_fops);
 		if (!entry) {
 			cmdq_err("proc_create_file cmdq_buffer_record failed");
-			return -ENOMEM;
+			goto remove_dir;
 		}
 	}
-	return 0;
+	debug_dir = debugDirEntry;
+	ret = 0;
+	goto out;
+
+remove_dir:
+	proc_remove(debugDirEntry);
+out:
+	mutex_unlock(&proc_lock);
+	return ret;
 }
 EXPORT_SYMBOL(cmdq_proc_create);
 

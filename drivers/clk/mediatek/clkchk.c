@@ -181,8 +181,16 @@ struct provider_clk *get_all_provider_clks(bool is_internal)
 
 		if (cells != 0U)  {
 			unsigned int i;
+			u32 clk_count = MAX_CLK_NUM;
 
-			for (i = 0; i < MAX_CLK_NUM; i++) {
+			if (clkchk_ops && clkchk_ops->get_provider_clk_count) {
+				u32 count = clkchk_ops->get_provider_clk_count(node_name);
+
+				if (count)
+					clk_count = min(count, (u32)MAX_CLK_NUM);
+			}
+
+			for (i = 0; i < clk_count; i++) {
 				struct of_phandle_args pa;
 				struct clk *ck;
 

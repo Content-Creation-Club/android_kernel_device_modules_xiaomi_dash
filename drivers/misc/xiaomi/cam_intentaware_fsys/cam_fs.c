@@ -920,7 +920,7 @@ static int __init cam_fs_init(void)
 	memset(&(dev_info.d_cache), 0, sizeof(char) * CAM_FS_CMD_MAX_LEN);
 
 	log("[%s] finish.\n", __func__);
-	return 1;
+	return 0;
 }
 
 module_init(cam_fs_init);

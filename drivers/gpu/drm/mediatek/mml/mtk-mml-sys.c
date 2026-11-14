@@ -2573,6 +2573,11 @@ static int subcomp_init(struct platform_device *pdev, struct mml_sys *sys,
 	if (subcomponent >= MML_MAX_SYS_COMPONENTS)
 		return -EINVAL;
 	comp = &sys->comps[subcomponent];
+	if (subcomponent) {
+		/* Logical subcomponents share this platform device's register bank. */
+		comp->base = sys->comps[0].base;
+		comp->base_pa = sys->comps[0].base_pa;
+	}
 
 	ret = mml_subcomp_init(pdev, subcomponent, comp);
 	if (ret)

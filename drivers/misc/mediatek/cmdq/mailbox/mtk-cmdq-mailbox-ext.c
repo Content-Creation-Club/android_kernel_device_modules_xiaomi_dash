@@ -3848,7 +3848,6 @@ static int cmdq_probe(struct platform_device *pdev)
 	cmdq_util_controller->track_ctrl(cmdq, cmdq->base_pa, false);
 #endif
 	cmdq->prebuilt_clt = cmdq_mbox_create(&pdev->dev, 0);
-	cmdq->hw_trace_clt = cmdq_mbox_create(&pdev->dev, 1);
 	if (cmdq->prebuilt_clt && cmdq->gce_vm && hw_trace_built_in[cmdq->hwid]) {
 		struct cmdq_thread *thread = (struct cmdq_thread *)cmdq->prebuilt_clt->chan->con_priv;
 
@@ -3860,6 +3859,8 @@ static int cmdq_probe(struct platform_device *pdev)
 		cmdq_msg("%s hw_trace thrd:%d base_va:0x%lx 0x%lx", __func__, thread->idx,
 			(unsigned long)cmdq->thread[thread->idx].base,
 			(unsigned long)cmdq->thread[thread->idx].gce_pa);
+	} else {
+		cmdq->hw_trace_clt = cmdq_mbox_create(&pdev->dev, 1);
 	}
 	if (cmdq->gce_vm && hw_trace_built_in[cmdq->hwid])
 		of_property_read_u32(dev->of_node, "cmdq-dump-hw-trace", &cmdq_hw_trace);

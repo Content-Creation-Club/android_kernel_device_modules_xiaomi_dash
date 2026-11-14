@@ -819,12 +819,12 @@ static s32 comp_init(struct platform_device *pdev, struct mml_comp *comp,
 
 	mml_msg("%s comp id %u %s (%s)", __func__, comp->id, comp->name, clkpropname);
 
-	comp->base = devm_platform_get_and_ioremap_resource(pdev, 0, &res);
-	if (!res) {
-		dev_err(dev, "failed to get resource\n");
-		return -EINVAL;
+	if (!comp->base) {
+		comp->base = devm_platform_get_and_ioremap_resource(pdev, 0, &res);
+		if (IS_ERR(comp->base))
+			return PTR_ERR(comp->base);
+		comp->base_pa = res->start;
 	}
-	comp->base_pa = res->start;
 
 	/* default set to mml-frame, maybe change in tp_init_cache */
 	comp->sysid = mml_sys_frame;

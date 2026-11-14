@@ -13,6 +13,8 @@
 #include <linux/seq_file.h>
 #include <linux/spinlock.h>
 
+#include <dt-bindings/clock/mt6991-clk.h>
+#include <dt-bindings/clock/mmdvfs-clk.h>
 #include <dt-bindings/power/mt6991-power.h>
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
@@ -3804,7 +3806,87 @@ static void verify_debug_flow(void)
  * init functions
  */
 
+/* Use the providers' binding limits instead of probing one index past the end. */
+static const struct {
+	const char *name;
+	u32 count;
+} provider_clk_counts[] = {
+	{ "apifrbus_ao_mem_reg", CLK_IFR_MEM_NR_CLK },
+	{ "apmixedsys", CLK_APMIXED_NR_CLK },
+	{ "apmixedsys_gp2", CLK_APMIXED2_NR_CLK },
+	{ "armpll_b_pll_ctrl", CLK_CPU_B_NR_CLK },
+	{ "armpll_bl_pll_ctrl", CLK_CPU_BL_NR_CLK },
+	{ "armpll_ll_pll_ctrl", CLK_CPU_LL_NR_CLK },
+	{ "audiosys", CLK_AFE_NR_CLK },
+	{ "cam_main_r1a", CLK_CAM_M_NR_CLK },
+	{ "cam_vcore_r1a", CLK_CAM_V_NR_CLK },
+	{ "camsys_ipe", CLK_CAMSYS_IPE_NR_CLK },
+	{ "camsys_mraw", CLK_CAM_MR_NR_CLK },
+	{ "camsys_rawa", CLK_CAM_RA_NR_CLK },
+	{ "camsys_rawb", CLK_CAM_RB_NR_CLK },
+	{ "camsys_rawc", CLK_CAM_RC_NR_CLK },
+	{ "camsys_rmsa", CLK_CAMSYS_RMSA_NR_CLK },
+	{ "camsys_rmsb", CLK_CAMSYS_RMSB_NR_CLK },
+	{ "camsys_rmsc", CLK_CAMSYS_RMSC_NR_CLK },
+	{ "camsys_yuva", CLK_CAM_YA_NR_CLK },
+	{ "camsys_yuvb", CLK_CAM_YB_NR_CLK },
+	{ "camsys_yuvc", CLK_CAM_YC_NR_CLK },
+	{ "ccipll_pll_ctrl", CLK_CCI_NR_CLK },
+	{ "ccu", CLK_CCU_NR_CLK },
+	{ "cksys", CLK_CK_NR_CLK },
+	{ "cksys_gp2", CLK_CK2_NR_CLK },
+	{ "dip_nr1_dip1", CLK_DIP_NR1_DIP1_NR_CLK },
+	{ "dip_nr2_dip1", CLK_DIP_NR2_DIP1_NR_CLK },
+	{ "dip_top_dip1", CLK_DIP_TOP_DIP1_NR_CLK },
+	{ "disp_vdisp_ao_config", CLK_MM_V_NR_CLK },
+	{ "img_vcore_d1a", CLK_IMG_V_NR_CLK },
+	{ "imgsys_main", CLK_IMG_NR_CLK },
+	{ "imp_iic_wrap_c", CLK_IMPC_NR_CLK },
+	{ "imp_iic_wrap_e", CLK_IMPE_NR_CLK },
+	{ "imp_iic_wrap_n", CLK_IMPN_NR_CLK },
+	{ "imp_iic_wrap_w", CLK_IMPW_NR_CLK },
+	{ "mdpsys", CLK_MDP_NR_CLK },
+	{ "mdpsys1", CLK_MDP1_NR_CLK },
+	{ "mfgpll_pll_ctrl", CLK_MFG_AO_NR_CLK },
+	{ "mfgpll_sc0_pll_ctrl", CLK_MFGSC0_AO_NR_CLK },
+	{ "mfgpll_sc1_pll_ctrl", CLK_MFGSC1_AO_NR_CLK },
+	{ "mmdvfs-mux", MMDVFS_USER_NUM },
+	{ "mmsys0", CLK_MM_NR_CLK },
+	{ "mmsys1", CLK_MM1_NR_CLK },
+	{ "ovlsys1_config", CLK_OVL1_NR_CLK },
+	{ "ovlsys_config", CLK_OVL_NR_CLK },
+	{ "pericfg_ao", CLK_PERAO_NR_CLK },
+	{ "pextp0cfg_ao", CLK_PEXT_NR_CLK },
+	{ "pextp1cfg_ao", CLK_PEXT1_NR_CLK },
+	{ "ptppll_pll_ctrl", CLK_PTP_NR_CLK },
+	{ "scp_i3c", CLK_SCP_I3C_NR_CLK },
+	{ "traw_cap_dip1", CLK_TRAW_CAP_DIP1_NR_CLK },
+	{ "traw_dip1", CLK_TRAW_DIP1_NR_CLK },
+	{ "ufscfg_ao", CLK_UFSAO_NR_CLK },
+	{ "vdecsys", CLK_VDE2_NR_CLK },
+	{ "vdecsys_soc", CLK_VDE1_NR_CLK },
+	{ "vencsys", CLK_VEN1_NR_CLK },
+	{ "vencsys_c1", CLK_VEN2_NR_CLK },
+	{ "vencsys_c2", CLK_VEN_C2_NR_CLK },
+	{ "vlp_cksys", CLK_VLP_CK_NR_CLK },
+	{ "wpe1_dip1", CLK_WPE1_DIP1_NR_CLK },
+	{ "wpe2_dip1", CLK_WPE2_DIP1_NR_CLK },
+	{ "wpe3_dip1", CLK_WPE3_DIP1_NR_CLK },
+};
+
+static u32 get_provider_clk_count(const char *provider_name)
+{
+	size_t i;
+
+	for (i = 0; i < ARRAY_SIZE(provider_clk_counts); i++)
+		if (!strcmp(provider_name, provider_clk_counts[i].name))
+			return provider_clk_counts[i].count;
+
+	return 0;
+}
+
 static struct clkchk_ops clkchk_mt6991_ops = {
+	.get_provider_clk_count = get_provider_clk_count,
 	.get_all_regnames = get_all_mt6991_regnames,
 	.get_pvd_pwr_data_idx = get_pvd_pwr_data_idx,
 	.get_pwr_status = get_pwr_status,
