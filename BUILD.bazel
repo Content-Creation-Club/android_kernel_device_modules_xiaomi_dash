@@ -6,14 +6,18 @@ package(
 
 
 load("//build/bazel_mgk_rules:mgk.bzl", "define_mgk")
+load("//build/bazel_common_rules/dist:dist.bzl", "copy_to_dist_dir")
+load("//build/kernel/kleaf:hermetic_tools.bzl", "hermetic_genrule")
+load("@bazel_skylib//rules:write_file.bzl", "write_file")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files", "strip_prefix")
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load(":kernel/kleaf/modules.bzl", "EARLY_SYSTEM_MODULES", "SYSTEM_MODULES", "VENDOR_MODULES")
 load(
     "//build/kernel/kleaf:kernel.bzl",
-    "kernel_build",
     "kernel_images",
     "kernel_module",
     "kernel_modules_install",
 )
-load("//build/kernel/kleaf:constants.bzl", "DEFAULT_GKI_OUTS")
 
 mgk_kmi_symbol_list = "//kernel-6.6:android/abi_gki_aarch64_mtk"
 
@@ -62,7 +66,6 @@ load("//kernel_device_modules-6.6:kernel/kleaf/mgk_64.bzl",
 
 define_mgk(
     name = "mgk_64_k66",
-    clang_autofdo_profile = "@dash_kernel_profiles//:aarch64/android15-6.6/kernel.afdo",
     defconfig = mgk_64_defconfig,
     kleaf_modules = mgk_64_kleaf_modules,
     kleaf_eng_modules = mgk_64_kleaf_eng_modules,
@@ -81,53 +84,70 @@ define_mgk(
     device_user_modules = mgk_64_device_user_modules,
     platform_device_user_modules = mgk_64_platform_device_user_modules,
     symbol_list = mgk_kmi_symbol_list,
-    strip_user_device_modules = True,
-    # Kleaf's system_dlkm action re-signs the staged core modules.
-    user_core_implicit_outs = [
-        "scripts/sign-file",
-        "certs/signing_key.pem",
-        "certs/signing_key.x509",
-    ],
-    user_defconfig_fragments = ["kernel/configs/tls.config"],
-    user_gki_modules = ["net/tls/tls.ko"],
     dtb_files = ["mediatek/dash.dtb"],
 )
 
-kernel_build(
-    name = "kernel_strict.user",
-    srcs = [
-        "//kernel-6.6:kernel_aarch64_sources",
-        ":mgk_configs",
-    ],
-    build_config = ":kernel_aarch64_mgk_64_k66_build_config.user",
-    clang_autofdo_profile = "@dash_kernel_profiles//:aarch64/android15-6.6/kernel.afdo",
-    defconfig_fragments = ["kernel/configs/tls.config"],
-    make_goals = [
-        "PAHOLE_FLAGS=--btf_gen_floats",
-        "Image",
-        "Image.lz4",
-        "Image.gz",
-        "modules",
-        "dtbs",
-    ],
-    strip_modules = True,
-    outs = DEFAULT_GKI_OUTS,
-    module_implicit_outs = mgk_64_common_modules + ["net/tls/tls.ko"],
-    kmi_symbol_list = "//kernel-6.6:android/abi_gki_aarch64",
-    additional_kmi_symbol_lists = ["//kernel-6.6:aarch64_additional_kmi_symbol_lists"],
-    protected_exports_list = "//kernel-6.6:android/abi_gki_protected_exports_aarch64",
-    protected_modules_list = "//kernel-6.6:gki_aarch64_protected_modules",
-    trim_nonlisted_kmi = True,
-    kmi_symbol_list_strict_mode = True,
-)
-
-# Early bootstrap for strict custom and official cores.
+# Early bootstrap for the common kernel.
 kernel_module(
-    name = "ufs_wlun_bootstrap_strict.user",
+    name = "ufs_wlun_bootstrap",
     srcs = ["//kernel_device_modules-6.6/drivers/ufs/wlun_bootstrap:sources"],
     makefile = ["//kernel_device_modules-6.6/drivers/ufs/wlun_bootstrap:Makefile"],
     outs = ["ufs_wlun_bootstrap.ko"],
-    kernel_build = ":kernel_strict.user",
+    kernel_build = "//kernel-6.6:kernel_aarch64",
+)
+
+# Vendor modules are unsigned; strip only these, preserving GKI signatures.
+hermetic_genrule(
+    name = "vendor_modules",
+    srcs = VENDOR_MODULES.keys() + [":ufs_wlun_bootstrap/ufs_wlun_bootstrap.ko"],
+    outs = ["vendor_modules/" + p.split("/")[-1] for p in VENDOR_MODULES] + ["vendor_modules/ufs_wlun_bootstrap.ko"],
+    use_cc_toolchain = True,
+    cmd = """
+        mkdir -p $(@D)/vendor_modules
+        for module in $(SRCS); do
+            llvm-strip --strip-debug -o "$(@D)/vendor_modules/$$(basename $$module)" "$$module"
+        done
+    """,
+)
+
+pkg_files(
+    name = "vendor_ramdisk_files",
+    srcs = [":vendor_modules/" + m.split("/")[-1] for m in VENDOR_MODULES if "vendor_ramdisk" in VENDOR_MODULES[m]] + [
+        ":vendor_modules/ufs_wlun_bootstrap.ko",
+    ] + ["//kernel-6.6:kernel_aarch64/" + m for m in EARLY_SYSTEM_MODULES],
+    strip_prefix = strip_prefix.files_only(),
+    prefix = "vendor_ramdisk",
+)
+
+pkg_tar(
+    name = "vendor_ramdisk_archive",
+    srcs = [":vendor_ramdisk_files"],
+    out = "vendor_ramdisk.tar",
+)
+
+write_file(
+    name = "system_modules_load",
+    out = "kernel/system_dlkm.modules.load",
+    content = SYSTEM_MODULES + [""],
+)
+
+copy_to_dist_dir(
+    name = "kernel_dist",
+    data = [
+        "//kernel-6.6:kernel_aarch64",
+        ":system_modules_load",
+        ":mgk_64_k66_merged_uapi_headers.user",
+    ] + [":vendor_modules/" + m.split("/")[-1] for m in VENDOR_MODULES if "vendor_dlkm" in VENDOR_MODULES[m]] + [
+        "//kernel-6.6:kernel_aarch64/" + m for m in SYSTEM_MODULES
+    ],
+    archives = [":vendor_ramdisk_archive"],
+    flat = True,
+)
+
+copy_to_dist_dir(
+    name = "kernel_uapi_headers_dist",
+    data = [":mgk_64_k66_merged_uapi_headers.user"],
+    flat = True,
 )
 
 kernel_module(
@@ -141,13 +161,13 @@ kernel_module(
 # Package the signed core modules separately from the MTK device modules.
 kernel_modules_install(
     name = "core_modules.user",
-    kernel_build = ":mgk_64_k66_kernel_aarch64.user",
+    kernel_build = "//kernel-6.6:kernel_aarch64",
     kernel_modules = [],
 )
 
 kernel_images(
     name = "system_dlkm.user",
-    kernel_build = ":mgk_64_k66_kernel_aarch64.user",
+    kernel_build = "//kernel-6.6:kernel_aarch64",
     kernel_modules_install = ":core_modules.user",
     build_system_dlkm = True,
     build_system_dlkm_flatten = True,

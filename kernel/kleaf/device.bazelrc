@@ -1,0 +1,4 @@
+build --noenable_bzlmod
+build --repo_env=KERNEL_VERSION=kernel-6.6
+build --repo_env=DEFCONFIG_OVERLAYS=dash.config
+build --//build/bazel_mgk_rules:kernel_version=6.6
