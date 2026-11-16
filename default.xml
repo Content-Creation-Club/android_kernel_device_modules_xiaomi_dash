@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<manifest>
+  <remote name="github" fetch="ssh://git@github.com" />
+  <remote name="aosp" fetch="https://android.googlesource.com" />
+  <default sync-j="8" remote="aosp" revision="main-kernel-build-2024" />
+  <!-- Common kernel, platform sources and workspace entry points. -->
+  <project name="Content-Creation-Club/android_kernel_common_xiaomi" path="kernel/platform/kernel-6.6/kernel-6.6" remote="github" revision="main" />
+  <project name="Content-Creation-Club/android_kernel_device_modules_xiaomi_dash" path="kernel/platform/kernel-6.6/kernel_device_modules-6.6" remote="github" revision="main">
+    <linkfile src="kernel/kleaf/device.bazelrc" dest="kernel/platform/kernel-6.6/device.bazelrc" />
+    <linkfile src="kernel/kleaf/build.sh" dest="kernel/platform/kernel-6.6/build.sh" />
+  </project>
+  <project name="Content-Creation-Club/android_kernel_mtk_modules_xiaomi_dash" path="kernel/platform/kernel-6.6/vendor/mediatek/kernel_modules" remote="github" revision="main" />
+  <project name="Content-Creation-Club/android_kernel_build_bazel_mgk_rules" path="kernel/platform/kernel-6.6/build/bazel_mgk_rules" remote="github" revision="lineage-24.0">
+    <linkfile src="kleaf/bazel.WORKSPACE" dest="kernel/platform/kernel-6.6/WORKSPACE" />
+    <linkfile src="kleaf/bazel.sh" dest="kernel/platform/kernel-6.6/tools/bazel" />
+  </project>
+  <!-- Matching AOSP kernel 6.6 build tools and public dependencies. -->
+  <project name="kernel/build" path="kernel/platform/kernel-6.6/build/kernel">
+    <linkfile src="kleaf/bzlmod/bazel.MODULE.bazel" dest="kernel/platform/kernel-6.6/MODULE.bazel" />
+    <linkfile src="kleaf/bzlmod/bazel.WORKSPACE.bzlmod" dest="kernel/platform/kernel-6.6/WORKSPACE.bzlmod" />
+  </project>
+  <project name="platform/build/bazel_common_rules" path="kernel/platform/kernel-6.6/build/bazel_common_rules" />
+  <project name="kernel/common" path="kernel/platform/kernel-6.6/common" revision="android15-6.6-2026-07" upstream="android15-6.6-2026-07" dest-branch="android15-6.6-2026-07" />
+  <project name="kernel/configs" path="kernel/platform/kernel-6.6/kernel/configs" revision="main" upstream="main" dest-branch="main" />
+  <project name="kernel/common-modules/wonder" path="kernel/platform/kernel-6.6/common-modules/wonder" revision="144825c631d444dc7219c7affaea3e717b27df4c" upstream="android15-6.6" dest-branch="android15-6.6" />
+  <project name="kernel/common-modules/trusty" path="kernel/platform/kernel-6.6/common-modules/trusty" />
+  <project name="platform/external/virtio-media" path="kernel/platform/kernel-6.6/common-modules/virtio-media" />
+  <project name="kernel/common-modules/virtual-device" path="kernel/platform/kernel-6.6/common-modules/virtual-device" revision="211d96f861e1d6061ecb6bbe6e289ce8bf144290" upstream="android15-6.6" dest-branch="android15-6.6" />
+  <project name="platform/prebuilts/clang/host/linux-x86" path="kernel/platform/kernel-6.6/prebuilts/clang/host/linux-x86" clone-depth="1" />
+  <project name="platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8" path="kernel/platform/kernel-6.6/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8" clone-depth="1" />
+  <project name="platform/prebuilts/build-tools" path="kernel/platform/kernel-6.6/prebuilts/build-tools" clone-depth="1" />
+  <project name="platform/prebuilts/clang-tools" path="kernel/platform/kernel-6.6/prebuilts/clang-tools" clone-depth="1" />
+  <project name="kernel/prebuilts/build-tools" path="kernel/platform/kernel-6.6/prebuilts/kernel-build-tools" clone-depth="1" />
+  <project name="platform/prebuilts/rust" path="kernel/platform/kernel-6.6/prebuilts/rust" clone-depth="1" />
+  <project name="platform/system/tools/mkbootimg" path="kernel/platform/kernel-6.6/tools/mkbootimg" />
+  <project name="platform/prebuilts/jdk/jdk11" path="kernel/platform/kernel-6.6/prebuilts/jdk/jdk11" clone-depth="1" />
+  <project name="toolchain/prebuilts/ndk/r26" path="kernel/platform/kernel-6.6/prebuilts/ndk-r26" clone-depth="1" />
+  <project name="platform/external/libcap-ng" path="kernel/platform/kernel-6.6/external/libcap-ng" />
+  <project name="platform/external/libcap" path="kernel/platform/kernel-6.6/external/libcap" />
+  <project name="platform/external/bazel-skylib" path="kernel/platform/kernel-6.6/external/bazel-skylib" />
+  <project name="platform/external/bazelbuild-bazel-central-registry" path="kernel/platform/kernel-6.6/external/bazelbuild-bazel-central-registry" />
+  <project name="platform/external/bazelbuild-platforms" path="kernel/platform/kernel-6.6/external/bazelbuild-platforms" />
+  <project name="platform/external/bazelbuild-apple_support" path="kernel/platform/kernel-6.6/external/bazelbuild-apple_support" />
+  <project name="platform/external/bazelbuild-rules_cc" path="kernel/platform/kernel-6.6/external/bazelbuild-rules_cc" />
+  <project name="platform/external/bazelbuild-rules_java" path="kernel/platform/kernel-6.6/external/bazelbuild-rules_java" />
+  <project name="platform/external/bazelbuild-rules_license" path="kernel/platform/kernel-6.6/external/bazelbuild-rules_license" />
+  <project name="platform/external/bazelbuild-rules_pkg" path="kernel/platform/kernel-6.6/external/bazelbuild-rules_pkg" />
+  <project name="platform/external/bazelbuild-rules_python" path="kernel/platform/kernel-6.6/external/bazelbuild-rules_python" />
+  <project name="platform/external/python/absl-py" path="kernel/platform/kernel-6.6/external/python/absl-py" />
+  <project name="platform/external/lz4" path="kernel/platform/kernel-6.6/external/lz4" />
+  <project name="platform/external/pigz" path="kernel/platform/kernel-6.6/external/pigz" />
+  <project name="platform/external/toybox" path="kernel/platform/kernel-6.6/external/toybox" />
+  <project name="platform/external/zlib" path="kernel/platform/kernel-6.6/external/zlib" />
+  <project name="platform/external/zopfli" path="kernel/platform/kernel-6.6/external/zopfli" />
+</manifest>
